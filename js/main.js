@@ -1108,12 +1108,8 @@ function downloadJSON() {
         alert('Error exporting diagram: ' + error.message);
     }
 }
-function importFromJSON(jsonData) {
-    alert('✅ JSON Export is ready! Use CTRL+J to export diagrams.\n\nFor JSON visualization, try:\n• jsoncrack.com\n• Browser JSON viewers\n• VS Code with JSON extensions');
-    console.log('JSON Import disabled - use external tools for visualization');
-    return;
-}
-/*
+
+
 function importFromJSON(jsonData) {
     try {
         const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
@@ -1157,7 +1153,7 @@ function importFromJSON(jsonData) {
     }
 }
 
-*/
+
 function importElement(elementData, parentDropArea, elementsById) {
     if (!parentDropArea) return null;
     
