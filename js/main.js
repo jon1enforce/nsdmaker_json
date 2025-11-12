@@ -1109,7 +1109,12 @@ function downloadJSON() {
     }
 }
 
-
+function importFromJSON(jsonData) {
+    alert('JSON Import is currently under development. Export works perfectly!');
+    console.log('Import functionality disabled for now');
+    return;
+}
+/*
 function importFromJSON(jsonData) {
     try {
         const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
@@ -1152,7 +1157,7 @@ function importFromJSON(jsonData) {
         alert('Error importing diagram: ' + error.message);
     }
 }
-
+*/
 
 function importElement(elementData, parentDropArea, elementsById) {
     if (!parentDropArea) return null;
