@@ -1113,7 +1113,7 @@ function importFromJSON(jsonData) {
     console.log('JSON Import disabled - use external tools for visualization');
     return;
 }
-'''
+/*
 function importFromJSON(jsonData) {
     try {
         const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
@@ -1156,7 +1156,8 @@ function importFromJSON(jsonData) {
         alert('Error importing diagram: ' + error.message);
     }
 }
-'''
+
+*/
 function importElement(elementData, parentDropArea, elementsById) {
     if (!parentDropArea) return null;
     
