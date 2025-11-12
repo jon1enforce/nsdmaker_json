@@ -136,7 +136,14 @@ document.addEventListener('keydown', function(event) {
     event.preventDefault();
     getImage();
   }
-
+  if (event.ctrlKey && (event.key === "j" || event.key === "J")) { // CTRL J - JSON Export
+    event.preventDefault();
+    downloadJSON();
+  }
+  if (event.ctrlKey && (event.key === "i" || event.key === "I")) { // CTRL I - JSON Import
+    event.preventDefault();
+    document.getElementById('jsonFileInput').click();
+  }
 });
 
 
@@ -833,8 +840,6 @@ function upload() {
       applyTextareas();
       setAllTriangles();
     }
-
-
   }
 
   input.click();
@@ -874,59 +879,11 @@ function resetSidebar() {
   }
 }
 
-/*
-dblocks = document.getElementsByClassName("dblock")
-for (let i = 0; i < dblocks.length; ++i) {
-  dragElement(dblocks[i])
-}
+// ==================== VOLLSTÄNDIG KORRIGIERTE JSON FUNKTIONEN ====================
 
-function dragElement(elmnt) {
-  var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-
-  elmnt.onmousedown = dragMouseDown;
-
-  function dragMouseDown(e) {
-    e.target.style.zIndex = ++topIndex;
-
-    if (e.target.classList.contains("dblock") && !e.target.parentElement.classList.contains("droparea")) {
-      e = e || window.event;
-      e.preventDefault();
-      // get the mouse cursor position at startup:
-      pos3 = e.clientX;
-      pos4 = e.clientY;
-      document.onmouseup = closeDragElement;
-      // call a function whenever the cursor moves:
-      document.onmousemove = elementDrag;
-
-    }
-  }
-
-  function elementDrag(e) {
-    e = e || window.event;
-    e.preventDefault();
-    // calculate the new cursor position:
-    pos1 = pos3 - e.clientX;
-    pos2 = pos4 - e.clientY;
-    pos3 = e.clientX;
-    pos4 = e.clientY;
-    // set the element's new position:
-    elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
-    elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
-  }
-
-  function closeDragElement() {
-    // stop moving when mouse button is released:
-    document.onmouseup = null;
-    document.onmousemove = null;
-  }
-}
-
-*/
-
-// ==================== JSON FUNKTIONEN ====================
-// Minimal hinzugefügt - stört nichts existierendes
-
+// ==================== VOLLSTÄNDIG KORRIGIERTE JSON FUNKTIONEN ====================
 function exportToJSON() {
+    console.log("🚀 === START EXPORT TO JSON ===");
     const rootElement = document.getElementById("rblock");
     const diagramData = {
         metadata: {
@@ -937,26 +894,182 @@ function exportToJSON() {
         elements: []
     };
 
-    // Sammle alle dblock Elemente
-    const elements = document.querySelectorAll('.dblock');
-    elements.forEach(element => {
-        if (!isElementInRblock(element)) return;
+    console.log("📋 Root element found:", rootElement);
+    
+    // Vereinfachter Ansatz: Exportiere nur was wirklich im Canvas sichtbar ist
+    function collectVisibleElements() {
+        const elements = [];
+        const visibleBlocks = document.querySelectorAll('#rblock .dblock:not(.program)');
+        
+        console.log("👀 Found visible blocks:", visibleBlocks.length);
+        
+        visibleBlocks.forEach((block, index) => {
+            // Überspringe das Root-Program Element
+            if (block.classList.contains('program') && block.id === 'rblock') return;
+            
+            // ⚡️ KORREKTUR: Überspringe Elemente, die bereits in Decision-Branches sind
+            if (isElementInDecisionBranch(block)) {
+                console.log(`⏩ Skipping ${block.id || index} - already in decision branch`);
+                return;
+            }
+            
+            const elementData = {
+                id: block.id || `elem_${index}`,
+                type: getElementType(block),
+                content: getElementContent(block),
+                position: { x: 0, y: 0 },
+                parentId: null,
+                parentBranchIndex: null,
+                attributes: getElementAttributes(block),
+                children: []
+            };
+            
+            console.log(`✅ Adding element ${elementData.id}:`, {
+                type: elementData.type,
+                content: elementData.content
+            });
+            
+            // Wenn es eine Decision ist, sammle ihre Kinder
+            if (block.classList.contains('decision')) {
+                collectDecisionChildren(block, elementData);
+            }
+            
+            elements.push(elementData);
+        });
+        
+        return elements;
+    }
+    
+    function collectDecisionChildren(decisionElement, parentData) {
+        console.log(`🎯 Collecting children for decision ${parentData.id}`);
+        
+        const branches = decisionElement.querySelectorAll('.decision-branch');
+        console.log(`📊 Found ${branches.length} branches`);
+        
+        branches.forEach((branch, branchIndex) => {
+            console.log(`🔍 Processing branch ${branchIndex}`);
+            
+            const dropArea = branch.querySelector('.droparea');
+            if (dropArea && dropArea.children.length > 0) {
+                Array.from(dropArea.children).forEach((child, childIndex) => {
+                    if (child.classList.contains('dblock')) {
+                        console.log(`👶 Found child in branch ${branchIndex}:`, child);
+                        
+                        const childData = {
+                            id: child.id || `child_${parentData.id}_${branchIndex}_${childIndex}`,
+                            type: getElementType(child),
+                            content: getElementContent(child),
+                            position: { x: 0, y: 0 },
+                            parentId: parentData.id,
+                            parentBranchIndex: branchIndex,
+                            attributes: getElementAttributes(child),
+                            children: []
+                        };
+                        
+                        console.log(`✅ Adding child ${childData.id} to parent ${parentData.id}`, {
+                            type: childData.type,
+                            content: childData.content,
+                            branchIndex: childData.parentBranchIndex
+                        });
+                        
+                        parentData.children.push(childData);
+                    }
+                });
+            }
+        });
+        
+        console.log(`📦 Decision ${parentData.id} now has ${parentData.children.length} children`);
+    }
 
-        const elementData = {
-            id: element.id || 'elem_' + Math.random().toString(36).substr(2, 9),
-            type: getElementType(element),
-            content: getElementContent(element),
-            position: { x: 0, y: 0 },
-            attributes: getElementAttributes(element)
-        };
-
-        diagramData.elements.push(elementData);
+    // Sammle nur sichtbare Elemente
+    const visibleElements = collectVisibleElements();
+    console.log("📊 Visible elements collected:", visibleElements.length);
+    
+    // Baue hierarchische Struktur auf
+    const elementsMap = new Map();
+    visibleElements.forEach(element => {
+        elementsMap.set(element.id, element);
     });
 
+    // Entferne Child-Elemente aus der Root-Liste
+    const rootElements = [];
+    visibleElements.forEach(element => {
+        if (!element.parentId) {
+            rootElements.push(element);
+        }
+    });
+
+    diagramData.elements = rootElements;
+    
+    console.log("🎉 === EXPORT COMPLETE ===");
+    console.log("📄 Final JSON structure:", diagramData);
+    console.log("📊 Root elements:", rootElements.length);
+    rootElements.forEach((root, index) => {
+        console.log(`  ${index}. ${root.id} [${root.type}] with ${root.children.length} children`);
+    });
+    
     return diagramData;
 }
+function isElementInDecisionBranch(element) {
+    let parent = element.parentElement;
+    while (parent) {
+        if (parent.classList && 
+            (parent.classList.contains('decision-branch') || 
+             parent.classList.contains('decision-branches') ||
+             parent.classList.contains('decision'))) {
+            return true;
+        }
+        parent = parent.parentElement;
+    }
+    return false;
+}
+function getElementAttributes(element) {
+    const attributes = {};
+    
+    console.log("=== DEBUG getElementAttributes ===");
+    console.log("Element:", element);
+    console.log("Classes:", element.classList);
+    
+    if (element.classList.contains('decision')) {
+        console.log("🔍 Searching for branches in decision...");
+        
+        // NUR die Textareas in den Branch-Labels suchen, nicht alle Textareas
+        const branchContainers = element.querySelectorAll('.decision-branch');
+        console.log("Branch containers found:", branchContainers);
+        
+        if (branchContainers.length > 0) {
+            attributes.branches = Array.from(branchContainers).map((branch, index) => {
+                // WICHTIG: Suche nur die erste Textarea im Branch (das Label), nicht alle
+                const labelTextarea = branch.querySelector('textarea:first-child');
+                const condition = labelTextarea ? 
+                    (labelTextarea.value || 
+                     (index === 0 ? 'THEN' : 
+                      index === 1 ? 'ELSE' : 
+                      'Condition ' + (index + 1))) : 
+                    (index === 0 ? 'THEN' : 'ELSE');
+                
+                console.log(`Branch ${index} condition:`, condition);
+                return {
+                    condition: condition,
+                    branchIndex: index
+                };
+            });
+        } else {
+            // Fallback
+            attributes.branches = [
+                { condition: 'THEN', branchIndex: 0 },
+                { condition: 'ELSE', branchIndex: 1 }
+            ];
+        }
+    }
+    
+    console.log("Final attributes:", attributes);
+    return attributes;
+}
+
 
 function getElementType(element) {
+    if (element.id === 'rblock') return 'program';
     if (element.classList.contains('program')) return 'program';
     if (element.classList.contains('process')) return 'process';
     if (element.classList.contains('decision')) return 'decision';
@@ -970,33 +1083,30 @@ function getElementContent(element) {
     return textarea ? textarea.value : '';
 }
 
-function getElementAttributes(element) {
-    const attributes = {};
-    
-    if (element.classList.contains('decision')) {
-        const branches = element.querySelectorAll('.decision-branches .dbranch');
-        attributes.branches = Array.from(branches).map(branch => {
-            const input = branch.querySelector('input');
-            return input ? input.value : '';
-        });
-    }
-    
-    return attributes;
-}
+
+
+
 
 function downloadJSON() {
-    const diagramData = exportToJSON();
-    const dataStr = JSON.stringify(diagramData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    
-    const filename = diagramData.metadata.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'nsd_diagram';
-    
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(dataBlob);
-    link.download = `${filename}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+        const diagramData = exportToJSON();
+        const dataStr = JSON.stringify(diagramData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        
+        const filename = diagramData.metadata.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'nsd_diagram';
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(dataBlob);
+        link.download = `${filename}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        console.log('Diagram successfully exported to JSON:', diagramData);
+    } catch (error) {
+        console.error('Error exporting to JSON:', error);
+        alert('Error exporting diagram: ' + error.message);
+    }
 }
 
 function importFromJSON(jsonData) {
@@ -1005,15 +1115,36 @@ function importFromJSON(jsonData) {
         
         // Lösche vorhandenes Diagramm
         clrCanvas();
+        const rootBlock = document.getElementById("rblock");
         
-        // Importiere Elemente (vereinfacht - nur Process für Demo)
+        // Setze Titel
+        const titleTextarea = rootBlock.querySelector('textarea');
+        if (titleTextarea && data.metadata && data.metadata.title) {
+            titleTextarea.value = data.metadata.title;
+            titleTextarea.setAttribute("value", data.metadata.title);
+            textareaResize({ target: titleTextarea });
+        }
+        
+        // Baue Lookup-Tabelle für Elemente
+        const elementsById = {};
         data.elements.forEach(element => {
-            if (element.type === 'process') {
-                createProcessFromJSON(element);
+            elementsById[element.id] = element;
+            if (element.children) {
+                element.children.forEach(child => {
+                    elementsById[child.id] = child;
+                });
+            }
+        });
+        
+        // Importiere Root-Elemente
+        data.elements.forEach(elementData => {
+            if (!elementData.parentId) { // Nur Root-Elemente
+                importElement(elementData, rootBlock.querySelector('.drop-before-end'), elementsById);
             }
         });
         
         setAllTriangles();
+        console.log('Diagram successfully imported from JSON:', data);
         alert('Diagram successfully imported from JSON!');
     } catch (error) {
         console.error('Error importing JSON:', error);
@@ -1021,23 +1152,15 @@ function importFromJSON(jsonData) {
     }
 }
 
-function createProcessFromJSON(elementData) {
-    const rootBlock = document.getElementById("rblock");
-    const dropArea = rootBlock.querySelector('.drop-before-end');
+function importElement(elementData, parentDropArea, elementsById) {
+    if (!parentDropArea) return null;
     
-    const processHTML = `
-        <div class="dblock process" draggable="true" ondragstart="drag(event)" onclick="disableDraggableParent(event);">
-            <div class="droparea drop-before-begin" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
-            <textarea rows="1" placeholder="Process" ondrop="return false;" oninput="textareaResize(event);"></textarea>
-            <div class="droparea drop-before-end" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
-        </div>
-    `;
-    
+    const elementHTML = createElementHTML(elementData);
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = processHTML;
+    tempDiv.innerHTML = elementHTML;
     const newElement = tempDiv.firstElementChild;
     
-    dropArea.appendChild(newElement);
+    parentDropArea.appendChild(newElement);
     
     // Setze Textinhalt
     const textarea = newElement.querySelector('textarea');
@@ -1046,28 +1169,144 @@ function createProcessFromJSON(elementData) {
         textarea.setAttribute("value", elementData.content);
         textareaResize({ target: textarea });
     }
+    
+    // Setze Decision-Bedingungen
+    if (elementData.type === 'decision' && elementData.attributes && elementData.attributes.branches) {
+        const branches = newElement.querySelectorAll('.decision-branches .dbranch');
+        elementData.attributes.branches.forEach((branch, index) => {
+            if (branches[index] && branch.condition) {
+                const input = branches[index].querySelector('input');
+                if (input) {
+                    input.value = branch.condition;
+                }
+            }
+        });
+    }
+    
+    // Importiere Kinder-Elemente
+    if (elementData.children && elementData.children.length > 0) {
+        elementData.children.forEach(childData => {
+            let childDropArea = null;
+            
+            if (childData.parentBranchIndex !== null && childData.parentBranchIndex !== undefined) {
+                // Element ist in einer Decision/Parallel Branch
+                const branches = newElement.querySelectorAll('.dbranch');
+                if (branches[childData.parentBranchIndex]) {
+                    childDropArea = branches[childData.parentBranchIndex].querySelector('.droparea');
+                }
+            } else {
+                // Element ist im normalen drop-before-end
+                childDropArea = newElement.querySelector('.drop-before-end');
+            }
+            
+            if (childDropArea) {
+                importElement(childData, childDropArea, elementsById);
+            }
+        });
+    }
+    
+    return newElement;
+}
+
+function createElementHTML(elementData) {
+    const baseHTML = {
+        'program': `<div class="dblock program" draggable="true" ondragstart="drag(event)" onclick="disableDraggableParent(event);">
+            <textarea rows="1" placeholder="Program" ondrop="return false;" oninput="textareaResize(event);"></textarea>
+            <div class="droparea drop-before-end" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+        </div>`,
+        
+        'process': `<div class="dblock process" draggable="true" ondragstart="drag(event)" onclick="disableDraggableParent(event);">
+            <div class="droparea drop-before-begin" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+            <textarea rows="1" placeholder="Process" ondrop="return false;" oninput="textareaResize(event);"></textarea>
+            <div class="droparea drop-before-end" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+        </div>`,
+        
+        'decision': `<div class="dblock decision" draggable="true" ondragstart="drag(event)" onclick="disableDraggableParent(event);">
+            <div class="droparea drop-before-begin" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+            <div class="triangles">
+                <div class="trig1"></div>
+                <div class="trig2"></div>
+                <div class="trig3"></div>
+                <div class="trig4"></div>
+            </div>
+            <div class="decision-branches">
+                <div class="dbranch">
+                    <input type="text" placeholder="Condition" value="">
+                    <div class="droparea" ondrop="decisionDrop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+                </div>
+                <div class="dbranch">
+                    <input type="text" placeholder="Default" value="">
+                    <div class="droparea" ondrop="decisionDrop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+                </div>
+            </div>
+            <div class="droparea drop-before-end" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+        </div>`,
+        
+        'loop': `<div class="dblock loop" draggable="true" ondragstart="drag(event)" onclick="disableDraggableParent(event);">
+            <div class="droparea drop-before-begin" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+            <textarea rows="1" placeholder="Loop" ondrop="return false;" oninput="textareaResize(event);"></textarea>
+            <div class="droparea drop-before-end" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+        </div>`,
+        
+        'parallel': `<div class="dblock parallel" draggable="true" ondragstart="drag(event)" onclick="disableDraggableParent(event);">
+            <div class="droparea drop-before-begin" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+            <div class="parallel-top">
+                <div></div>
+                <div></div>
+            </div>
+            <div class="parallel-branches">
+                <div class="dbranch">
+                    <div class="droparea" ondrop="parallelDrop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+                </div>
+                <div class="dbranch">
+                    <div class="droparea" ondrop="parallelDrop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+                </div>
+            </div>
+            <div class="parallel-bottom">
+                <div></div>
+                <div></div>
+            </div>
+            <div class="droparea drop-before-end" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)"></div>
+        </div>`
+    };
+    
+    return baseHTML[elementData.type] || baseHTML.process;
 }
 
 // Event Listener für JSON File Input
-document.getElementById('jsonFileInput').addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+if (!document.getElementById('jsonFileInput')) {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.id = 'jsonFileInput';
+    fileInput.accept = '.json';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
     
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        importFromJSON(e.target.result);
-    };
-    reader.readAsText(file);
-});
-
-// Tastatur-Shortcuts für JSON
-document.addEventListener('keydown', function(event) {
-    if (event.ctrlKey && (event.key === "j" || event.key === "J")) {
-        event.preventDefault();
-        downloadJSON();
-    }
-    if (event.ctrlKey && (event.key === "i" || event.key === "I")) {
-        event.preventDefault();
-        document.getElementById('jsonFileInput').click();
-    }
-});
+    fileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            importFromJSON(e.target.result);
+        };
+        reader.readAsText(file);
+        
+        // Reset input für erneute Auswahl der gleichen Datei
+        event.target.value = '';
+    });
+} else {
+    document.getElementById('jsonFileInput').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            importFromJSON(e.target.result);
+        };
+        reader.readAsText(file);
+        
+        // Reset input für erneute Auswahl der gleichen Datei
+        event.target.value = '';
+    });
+}
