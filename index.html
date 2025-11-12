@@ -20,6 +20,11 @@
     <button onclick="undo();">Undo <b>[^Z]</b></button>
     <button onclick="redo();">Redo <b>[^Y]</b></button>
     <button id="png" onclick="getImage();">Export PNG <b>[^E]</b></button>
+    <!-- NEUE JSON BUTTONS -->
+    <button onclick="downloadJSON();">Export JSON <b>[^J]</b></button>
+    <button onclick="document.getElementById('jsonFileInput').click();">Import JSON <b>[^I]</b></button>
+    <input id="jsonFileInput" type="file" accept=".json" style="display: none;">
+    <!-- ENDE NEUE JSON BUTTONS -->
     <button onclick="clearCanvas();">Clear <b>[^DEL]</b></button>
     <a href="https://github.com/charyan/nsdmaker" target="_blank"><img src="res/img/github-mark-white.png"></a>
   </div>
